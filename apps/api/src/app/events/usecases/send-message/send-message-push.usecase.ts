@@ -1,36 +1,38 @@
-import { Injectable } from '@nestjs/common';
-import {
-  MessageRepository,
-  NotificationStepEntity,
-  NotificationRepository,
-  SubscriberRepository,
-  NotificationEntity,
-  MessageEntity,
-  IntegrationEntity,
-} from '@novu/dal';
+import * as Sentry from '@sentry/node';
+
 import {
   ChannelTypeEnum,
-  LogCodeEnum,
-  PushProviderIdEnum,
   ExecutionDetailsSourceEnum,
   ExecutionDetailsStatusEnum,
+  LogCodeEnum,
+  PushProviderIdEnum,
 } from '@novu/shared';
-import * as Sentry from '@sentry/node';
-import { CreateLog } from '../../../logs/usecases/create-log/create-log.usecase';
-import { PushFactory } from '../../services/push-service/push.factory';
-import { SendMessageCommand } from './send-message.command';
 import { CompileTemplate, CompileTemplateCommand } from '../../../content-templates/usecases';
+import {
+  CreateExecutionDetails,
+  CreateExecutionDetailsCommand,
+} from '../../../execution-details/usecases/create-execution-details';
 import {
   GetDecryptedIntegrations,
   GetDecryptedIntegrationsCommand,
 } from '../../../integrations/usecases/get-decrypted-integrations';
 import {
-  CreateExecutionDetails,
-  CreateExecutionDetailsCommand,
-} from '../../../execution-details/usecases/create-execution-details';
-import { DetailEnum } from '../../../execution-details/types';
-import { SendMessageBase } from './send-message.base';
+  IntegrationEntity,
+  MessageEntity,
+  MessageRepository,
+  NotificationEntity,
+  NotificationRepository,
+  NotificationStepEntity,
+  SubscriberRepository,
+} from '@novu/dal';
+
 import { ApiException } from '../../../shared/exceptions/api.exception';
+import { CreateLog } from '../../../logs/usecases/create-log/create-log.usecase';
+import { DetailEnum } from '../../../execution-details/types';
+import { Injectable } from '@nestjs/common';
+import { PushFactory } from '../../services/push-service/push.factory';
+import { SendMessageBase } from './send-message.base';
+import { SendMessageCommand } from './send-message.command';
 
 @Injectable()
 export class SendMessagePush extends SendMessageBase {
@@ -130,7 +132,7 @@ export class SendMessagePush extends SendMessageBase {
         Object.values(PushProviderIdEnum).includes(chan.providerId as PushProviderIdEnum)
       ) || [];
 
-    const messagePayload = Object.assign({}, command.payload);
+    const messagePayload = Object.assign({ _notificationId: notification._id }, command.payload);
     delete messagePayload.attachments;
 
     if (!pushChannels.length) {
@@ -172,7 +174,7 @@ export class SendMessagePush extends SendMessageBase {
           content,
           command,
           notification,
-          command.payload,
+          messagePayload,
           overrides,
           channel.providerId
         );

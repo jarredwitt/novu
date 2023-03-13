@@ -31,3 +31,15 @@ export class MarkMessageAsRequestDto {
   })
   mark: MarkMessageFields;
 }
+
+export class MarkNotificationAsRequestDto {
+  @ApiProperty({
+    type: 'string',
+  })
+  notificationId: string;
+
+  @ApiProperty({
+    type: MarkMessageFields,
+  })
+  mark: MarkMessageFields;
+}

@@ -53,7 +53,9 @@ import {
   UpdateSubscriberOnlineFlag,
   UpdateSubscriberOnlineFlagCommand,
 } from './usecases/update-subscriber-online-flag';
-import { MarkMessageAsRequestDto } from '../widgets/dtos/mark-message-as-request.dto';
+import { MarkMessageAsRequestDto, MarkNotificationAsRequestDto } from '../widgets/dtos/mark-message-as-request.dto';
+import { FindNotificationMessagesCommand } from '../widgets/usecases/find-notification-messages/find-notification-messages';
+import { FindNotificationMessages } from '../widgets/usecases/find-notification-messages/find-notification-messages.usecase';
 
 @Controller('/subscribers')
 @ApiTags('Subscribers')
@@ -71,7 +73,8 @@ export class SubscribersController {
     private genFeedCountUsecase: GetFeedCount,
     private markMessageAsUsecase: MarkMessageAs,
     private updateMessageActionsUsecase: UpdateMessageActions,
-    private updateSubscriberOnlineFlagUsecase: UpdateSubscriberOnlineFlag
+    private updateSubscriberOnlineFlagUsecase: UpdateSubscriberOnlineFlag,
+    private findNotificationMessageUsecase: FindNotificationMessages
   ) {}
 
   @Get('')
@@ -432,6 +435,46 @@ export class SubscribersController {
 
     const messageIds = this.toArray(body.messageId);
     if (!messageIds) throw new BadRequestException('messageId is required');
+
+    const command = MarkMessageAsCommand.create({
+      organizationId: user.organizationId,
+      subscriberId: subscriberId,
+      environmentId: user.environmentId,
+      messageIds,
+      mark: body.mark,
+    });
+
+    return await this.markMessageAsUsecase.execute(command);
+  }
+
+  @ExternalApiAccessible()
+  @UseGuards(JwtAuthGuard)
+  @Post('/:subscriberId/notifications/:notificationId/markAs')
+  @ApiOperation({
+    summary: 'Mark messages that share the same notificationId as seen',
+  })
+  @ApiCreatedResponse({
+    type: MessageResponseDto,
+  })
+  async markNotificationAs(
+    @UserSession() user: IJwtPayload,
+    @Param('subscriberId') subscriberId: string,
+    @Param('notificationId') notificationId: string,
+    @Body() body: MarkNotificationAsRequestDto
+  ): Promise<MessageEntity[]> {
+    const notificationMessagesCommand = FindNotificationMessagesCommand.create({
+      organizationId: user.organizationId,
+      subscriberId: subscriberId,
+      environmentId: user.environmentId,
+      notificationId,
+    });
+
+    const messages = await this.findNotificationMessageUsecase.execute(notificationMessagesCommand);
+
+    const messageIds = messages?.map((message) => message._id);
+    if (!messageIds?.length) {
+      return [];
+    }
 
     const command = MarkMessageAsCommand.create({
       organizationId: user.organizationId,

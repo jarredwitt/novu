@@ -1,12 +1,12 @@
-import { ChannelTypeEnum } from '@novu/shared';
-import { SoftDeleteModel } from 'mongoose-delete';
 import { FilterQuery, Types } from 'mongoose';
+import { MessageDBModel, MessageEntity } from './message.entity';
 
 import { BaseRepository } from '../base-repository';
-import { MessageEntity, MessageDBModel } from './message.entity';
-import { Message } from './message.schema';
-import { FeedRepository } from '../feed';
+import { ChannelTypeEnum } from '@novu/shared';
 import { DalException } from '../../shared';
+import { FeedRepository } from '../feed';
+import { Message } from './message.schema';
+import { SoftDeleteModel } from 'mongoose-delete';
 
 type MessageQuery = FilterQuery<MessageDBModel>;
 
@@ -274,5 +274,17 @@ export class MessageRepository extends BaseRepository<MessageDBModel, MessageEnt
     );
 
     return this.mapEntity(res);
+  }
+
+  async findMessagesByNotificationId(query: {
+    _notificationId: string;
+    _environmentId: string;
+  }): Promise<MessageEntity[] | null> {
+    const res = await this.MongooseModel.find({
+      _notificationId: query._notificationId,
+      _environmentId: query._environmentId,
+    }).populate('subscriber');
+
+    return this.mapEntities(res);
   }
 }
